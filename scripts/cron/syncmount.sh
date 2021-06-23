@@ -38,7 +38,7 @@ find ${UPLOADS}/ ! -path "*Downloads*" ! -iname "*.partial~" -type f -mmin -0 -e
 
 # Identify files needing to be copied
 
-find ${UPLOADS}/ ! -path "*Downloads*" ! -iname "*.partial~" -type f -mmin +${AGE} | sed 's|'${UPLOADS}'||' | sort > ${TEMPFILE}
+find ${UPLOADS}/ ! -path "*Downloads*" ! -iname "*.partial~" -type f -cmin +${AGE} | sed 's|'${UPLOADS}/'||' | sort > ${TEMPFILE}
 
 # Copy files
 
@@ -46,19 +46,19 @@ if [[ -s ${TEMPFILE} ]]
 then
 	while IFS= read -r FILE
 	do
-		rclone rc core/stats --user ${RCLONEUSERNAME} --pass ${RCLONEPASSWORD} | jq '.transferring' | grep "${UPLOADS}${FILE}" > /dev/null
+		rclone rc core/stats --user ${RCLONEUSERNAME} --pass ${RCLONEPASSWORD} | jq '.transferring' | grep "${UPLOADS}/${FILE}" > /dev/null
 		RUNCHECK=${?}
 		if [[ ${RUNCHECK} -gt 0 ]]; then
-			BYTES=$(du "${UPLOADS}${FILE}" | cut -f1)
-			BYTESH=$(du -h "${UPLOADS}${FILE}" | cut -f1)
+			BYTES=$(du "${UPLOADS}/${FILE}" | cut -f1)
+			BYTESH=$(du -h "${UPLOADS}/${FILE}" | cut -f1)
 			echo $(date '+%F %H:%M:%S'),START,1,${BYTES} "# ${FILE}" >> ${APILOG}
 			echo Queuing ${FILE} of size ${BYTESH}
 	                ## Fix for Rclone RC creating multiple directories
-			TESTDIR="${RCLONEMOUNT}$(dirname "${FILE}")"
+			TESTDIR="${RCLONEMOUNT}/$(dirname "${FILE}")"
 			if [[ ! -d "${TESTDIR}" ]]; then
 				mkdir -p "${TESTDIR}"
 			fi
-			rclone rc operations/movefile _async=true srcFs=Local: srcRemote="${UPLOADS}${FILE}" dstFs=${RCLONESERVICE}:${RCLONEFOLDER} dstRemote="${FILE}" --user ${RCLONEUSERNAME} --pass ${RCLONEPASSWORD} > /dev/null
+			rclone rc operations/movefile _async=true srcFs=Local: srcRemote="${UPLOADS}/${FILE}" dstFs=${RCLONESERVICE}:${RCLONEFOLDER} dstRemote="${FILE}" --user ${RCLONEUSERNAME} --pass ${RCLONEPASSWORD}  > /dev/null
 			# echo "Sleeping 1 second - temp fix for duplicate folders" ; sleep 1
 		else
 			echo Skipping ${FILE}:  Already in queue
